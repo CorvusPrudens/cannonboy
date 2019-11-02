@@ -1,0 +1,299 @@
+extends KinematicBody2D
+
+#need to make it consistent across framerates!!! (maybe it's not very important actually)
+
+var airVelocity: Vector2 = Vector2(0, 0)
+var velocity: Vector2 = Vector2(0, 0)
+var userInput: bool = false
+var floorTick: int = 3
+var jumpTick: int = 100
+var jumping: bool = true
+var preGroundTick: int = 5
+var chain: Chain
+
+var wallJumping: bool = false
+var wallVector: int = 0
+
+class Link:
+	extends Node2D
+
+	var pos: Vector2
+	var speed: Vector2
+	var polygon: Polygon2D
+	var g = 1
+
+	func _init(parentPos: Vector2):
+		self.pos = parentPos
+		self.speed = Vector2(0, 0)
+		polygon = Polygon2D.new()
+		polygon.set_antialiased(true)
+		polygon.set_color(Color(1, 1, 1))
+		var arr = [Vector2(0, -2),
+				Vector2(2, 2),
+				Vector2(-2, 2)]
+		polygon.set_polygon(arr)
+		polygon.set_z_index(100)
+		add_child(polygon)
+
+	func linkUpdate(d):
+		self.pos.x += self.speed.x
+		self.pos.y += self.speed.y
+
+		self.speed.x *= 0.85
+		self.speed.y *= 0.85
+
+		#gravity
+		self.pos.y += 1
+		polygon.global_position = self.pos
+
+class Chain:
+	extends Node2D
+
+	var startPos: Vector2
+	var endPos: Vector2
+	var targPos: Vector2
+	var linkVal: int
+	var polygon: Polygon2D
+	var links = []
+
+	#extension logic
+	var extend: bool = false
+	var extending: bool = false
+	var extended: bool = false
+	var extSpeed: float = 20
+
+	#retraction logic
+	var retract: bool = false
+	var retracting: bool = false
+	var retracted: bool = true
+	var retractSpeed: float = 40
+
+	func _init(parentPos: Vector2, linkCount: int):
+
+		self.startPos = parentPos
+		self.endPos = parentPos
+		self.linkVal = linkCount
+
+		for i in range(linkCount):
+			var temp: Link = Link.new(parentPos)
+			add_child(temp)
+			self.links.append(temp)
+
+		#end anchor polygon
+		polygon = Polygon2D.new()
+		polygon.set_antialiased(true)
+		polygon.set_color(Color(1, 1, 1))
+		var arr = []
+		var size: float = 2
+		var vertices: int = 20
+		for i in range(vertices):
+			arr.append(Vector2(cos((float(i)/float(vertices))*PI*2)*size, -sin((float(i)/float(vertices))*PI*2)*size))
+		polygon.set_polygon(arr)
+		polygon.set_z_index(100)
+		add_child(polygon)
+
+	func extend(tp: Vector2):
+		if not self.extending:
+			self.extend = true
+			self.targPos = tp
+
+	func retract(tp: Vector2):
+		if not self.retracting:
+			self.retract = true
+			self.targPos = tp
+
+
+	func chainUpdate(d):
+		var damping:float = 12
+
+		if self.extend:
+			self.extending = true
+			self.retracted = false
+			var angle: float = atan2(self.targPos.y - self.endPos.y, self.targPos.x - self.endPos.x)
+
+			self.endPos.x += cos(angle)*self.extSpeed
+			self.endPos.y += sin(angle)*self.extSpeed
+
+			if abs(self.endPos.y - self.targPos.y) <= self.extSpeed and abs(self.endPos.x - self.targPos.x) <= self.extSpeed:
+				self.endPos = self.targPos
+				self.extend = false
+				self.extending = false
+				self.extended = true
+
+		if self.retract:
+			self.retracting = true
+			self.extended = false
+			var angle: float = atan2(self.targPos.y - self.endPos.y, self.targPos.x - self.endPos.x)
+
+			self.endPos.x += cos(angle)*self.extSpeed
+			self.endPos.y += sin(angle)*self.extSpeed
+
+			if abs(self.endPos.y - self.targPos.y) <= self.extSpeed and abs(self.endPos.x - self.targPos.x) <= self.extSpeed:
+				self.endPos = self.targPos
+				self.retract = false
+				self.retracting = false
+				self.retracted = true
+
+		if self.retracted or self.retracting:
+			self.endPos = get_parent().global_position
+
+		for i in range(links.size()):
+			var nextx:float
+			var nexty:float
+			var prevx:float
+			var prevy:float
+
+			self.startPos = get_parent().global_position
+			polygon.global_position = self.endPos
+
+			if i > 0:
+				prevx = self.links[i - 1].pos.x - self.links[i].pos.x
+				prevy = self.links[i - 1].pos.y - self.links[i].pos.y
+			else:
+				prevx = self.startPos.x - self.links[i].pos.x
+				prevy = self.startPos.y - self.links[i].pos.y
+
+			if i < self.linkVal - 1:
+				nextx = self.links[i + 1].pos.x - self.links[i].pos.x
+				nexty = self.links[i + 1].pos.y - self.links[i].pos.y
+			else:
+				nextx = self.endPos.x - self.links[i].pos.x
+				nexty = self.endPos.y - self.links[i].pos.y
+
+#			var maxDist:float = 10
+			var tempSpeedx: float = (prevx + nextx)
+			var tempSpeedy: float = (prevy + nexty)
+
+			links[i].speed.x += (tempSpeedx/damping)
+			links[i].speed.y += (tempSpeedy/damping)
+			links[i].linkUpdate(d)
+
+
+
+
+func _ready():
+	set_safe_margin(0.1)
+	var polygon = Polygon2D.new()
+	polygon.set_name("polygon")
+
+	polygon.set_antialiased(true)
+	polygon.set_color(Color(1, 1, 1))
+	#triangle shape
+
+	var arr = [Vector2(0, -5),
+				Vector2(5, 5),
+				Vector2(-5, 5)]
+	polygon.set_polygon(arr)
+	polygon.set_z_index(99)
+	add_child(polygon)
+	chain = Chain.new(global_position, 10)
+	add_child(chain)
+
+
+
+func move(delta):
+
+	#gravity
+	if not is_on_floor():
+		airVelocity.y += 7
+		floorTick -= 1
+		jumpTick -= 1
+		if not jumping and Input.is_action_pressed("space"):
+			preGroundTick -= 1
+	else:
+		airVelocity.y = 5
+		floorTick = 5
+		jumpTick = 30
+		jumping = false
+		wallJumping = false
+
+	userInput = false
+	if Input.is_action_pressed("left"):
+		if airVelocity.x > 1:
+			airVelocity.x -= 5
+			velocity.x = 0
+			userInput = true
+		elif airVelocity.x > -100 and airVelocity.x < -1:
+			velocity.x = -(100 + airVelocity.x)
+			userInput = true
+		elif abs(airVelocity.x) < 1 and velocity.x > -100:
+			velocity.x = -100
+			userInput = true
+	if Input.is_action_pressed("right"):
+		if velocity.x < 100:
+			velocity.x = 100
+			userInput = true
+	if (Input.is_action_just_pressed("space") and (is_on_floor() or floorTick > 0)) or (Input.is_action_pressed("space") and is_on_floor() and preGroundTick > 0):
+		airVelocity.y -= 150
+		jumping = true
+		preGroundTick = 5
+	if Input.is_action_just_released("space") or jumpTick <= 0:
+		jumping = false
+
+	if jumping and Input.is_action_pressed("space") and jumpTick > 0:
+		airVelocity.y -= 4
+
+	if wallJumping:
+		pass
+
+
+
+	if chain.extended:
+		var reelSpeed: float = 2
+		var angle: float = atan2(chain.targPos.y - global_position.y, chain.targPos.x - global_position.x)
+
+		if abs(global_position.y - chain.targPos.y) >= reelSpeed*2 and abs(global_position.x - chain.targPos.x) >= reelSpeed*2:
+			airVelocity.x += cos(angle)*reelSpeed
+			airVelocity.y += sin(angle)*reelSpeed
+
+		if abs(global_position.y - chain.targPos.y) <= reelSpeed and abs(global_position.x - chain.targPos.x) <= reelSpeed:
+			chain.retract(global_position)
+
+	if not userInput:
+		velocity.x *= 0.8
+	airVelocity.x *= 0.94
+
+
+
+	var combinedVelocity: Vector2 = velocity + airVelocity
+
+	move_and_slide(combinedVelocity, Vector2(0, -1))
+	var collision: KinematicCollision2D
+	if get_slide_count() > 0:
+		collision = get_slide_collision(0) #this returns the first of an arbitrary order of collisions that occured on the last frame
+
+	print(is_on_wall(), is_on_floor())
+	if is_on_wall() and not is_on_floor():
+		if collision.get_normal() == Vector2(1, 0):
+			airVelocity.x = -5
+			if airVelocity.y < 0:
+				airVelocity.y *= 0.97
+			else:
+				airVelocity.y *= 0.84
+
+			if Input.is_action_just_pressed("space"):
+				wallJumping = true
+				wallVector = 1
+
+				airVelocity.x += 220*wallVector
+				airVelocity.y -= 220
+
+
+func _process(delta):
+	move(delta)
+	if Input.is_action_just_pressed("shift"):
+		if chain.retracted:
+			chain.extend(Vector2(200, 200))
+		elif chain.extended:
+			chain.retract(global_position)
+	chain.chainUpdate(delta)
+
+	if chain.extended:
+		var reelSpeed: float = 50
+		var angle: float = atan2(chain.targPos.y - global_position.y, chain.targPos.x - global_position.x)
+		global_position.x += cos(angle)*reelSpeed #this will need to be speed not position
+		global_position.y += sin(angle)*reelSpeed
+
+		if abs(global_position.y - chain.targPos.y) <= reelSpeed and abs(global_position.x - chain.targPos.x) <= reelSpeed:
+			chain.retract(global_position)
+	pass
