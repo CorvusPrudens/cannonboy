@@ -26,7 +26,7 @@ func _on_animation_end():
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	set_z_index(100000)
+	set_z_index(1024)
 	frames = [$One, $Two, $Three, $Four]
 	for frame in frames:
 		frame.playing = false

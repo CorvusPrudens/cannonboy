@@ -49,7 +49,7 @@ func _on_turn(body):
 			right = true
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta):
+func _physics_process(delta):
 	if alive:
 		wriggleTick += 0.15
 		sprite.frame = fmod(floor(wriggleTick), 5)

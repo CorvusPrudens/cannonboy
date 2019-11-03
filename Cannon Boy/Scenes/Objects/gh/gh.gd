@@ -47,7 +47,7 @@ func _on_turn(body):
 			right = true
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta):
+func _physics_process(delta):
 	if alive:
 		if selected:
 			selectedTick += 0.25

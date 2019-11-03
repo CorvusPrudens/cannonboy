@@ -17,7 +17,7 @@ func _ready():
 	pass # Replace with function body.
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta):
+func _physics_process(delta):
 	boxTick += 0.5
 	if fmod(boxTick, 10) == 0 :
 		if box.rect_size.x > 0:
@@ -40,7 +40,7 @@ func _process(delta):
 		
 		frame = 9 + keyTick
 		keyTick += 0.3
-		if keyTick > 9:
+		if keyTick >= 9:
 			keyGet = false
 			keyTick = 0
 			keyGet = false

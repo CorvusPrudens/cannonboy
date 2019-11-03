@@ -13,6 +13,10 @@ var targParents = []
 var prevLock = null
 var bubbleTick = 0
 var footTick = 0
+var floorDamage: bool = false
+
+var targetLocked: bool = false
+var currentTarget = null
 
 var deathTick: float = 0
 
@@ -138,57 +142,60 @@ func animation(target):
 	$Legs.position.x = 0
 	$Cannon.position.x = 0
 	if is_on_floor():
-		if landPart:
-			$SFX.footstep()
-			$SFX.chain()
-			for i in range(3):
-				var particle = partScene.instance()
-				particle.velocity = Vector2(rand_range(-0.5, 0), rand_range(-0.5, 0))
-				particle.global_position = Vector2(rand_range(global_position.x - 7, global_position.x - 4), global_position.y + 6)
-				
-				var pp = partScene.instance()
-				pp.velocity = Vector2(rand_range(0, 0.5), rand_range(-0.5, 0))
-				pp.global_position = Vector2(rand_range(global_position.x  + 4, global_position.x + 7), global_position.y + 6)
-				get_parent().add_child(particle)
-				get_parent().add_child(pp)
-			landPart = false
-		else:
-			footTick = 0
-		if velocity.x > 4:
-			$Legs.flip_h = false
-			var f = 10 + fmod(animationTick/2, 10)
-			$Legs.frame = f
-			if f == 11 or f == 16:
-				$Cannon.position.y = -1
+		if not damageTaken:
+			if landPart:
 				$SFX.footstep()
 				$SFX.chain()
+				for i in range(3):
+					var particle = partScene.instance()
+					particle.velocity = Vector2(rand_range(-0.5, 0), rand_range(-0.5, 0))
+					particle.global_position = Vector2(rand_range(global_position.x - 7, global_position.x - 4), global_position.y + 6)
+					
+					var pp = partScene.instance()
+					pp.velocity = Vector2(rand_range(0, 0.5), rand_range(-0.5, 0))
+					pp.global_position = Vector2(rand_range(global_position.x  + 4, global_position.x + 7), global_position.y + 6)
+					get_parent().add_child(particle)
+					get_parent().add_child(pp)
+				landPart = false
 			else:
-				$Cannon.position.y = 0
-		elif velocity.x < -4:
-			$Legs.flip_h = true
-			var f = 10 + fmod(animationTick/2, 10)
-			$Legs.frame = f
-			if f == 11 or f == 16:
-				$Cannon.position.y = -1
-				$SFX.footstep()
-				$SFX.chain()
+				footTick = 0
+			if velocity.x > 4:
+				$Legs.flip_h = false
+				var f = 10 + fmod(animationTick/2, 10)
+				$Legs.frame = f
+				if f == 11 or f == 16:
+					$Cannon.position.y = -1
+					$SFX.footstep()
+					$SFX.chain()
+				else:
+					$Cannon.position.y = 0
+			elif velocity.x < -4:
+				$Legs.flip_h = true
+				var f = 10 + fmod(animationTick/2, 10)
+				$Legs.frame = f
+				if f == 11 or f == 16:
+					$Cannon.position.y = -1
+					$SFX.footstep()
+					$SFX.chain()
+				else:
+					$Cannon.position.y = 0
 			else:
-				$Cannon.position.y = 0
+				$Legs.frame = fmod(animationTick/30, 2)
+				if fmod((animationTick - 5)/30, 2) >= 1:
+					$Cannon.position.y = -1
+				else:
+					$Cannon.position.y = 0
+			if justLanded:
+				$Legs.frame = 4
+				landTick += 1
+				if landTick > 5:
+					$Cannon.position.y = 1
+				if landTick > 20:
+					justLanded = false
+					landTick = 0
+					animationTick = 0
 		else:
-			$Legs.frame = fmod(animationTick/30, 2)
-			if fmod((animationTick - 5)/30, 2) >= 1:
-				$Cannon.position.y = -1
-			else:
-				$Cannon.position.y = 0
-		if justLanded:
-			$Legs.frame = 4
-			landTick += 1
-			if landTick > 5:
-				$Cannon.position.y = 1
-			if landTick > 20:
-				justLanded = false
-				landTick = 0
-				animationTick = 0
+			$Legs.frame = 0
 	if is_on_wall():
 		if velocity.x == -5:
 			partTick += 1
@@ -309,7 +316,10 @@ func move(delta, targ):
 	else:
 		if not Input.is_action_pressed("space"):
 			jumpRelease = false
-		velocity.y = 5
+		if not floorDamage:
+			velocity.y = 5
+		else:
+			floorDamage = false
 		floorTick = 5
 		jumpTick = 30
 		if not Input.is_action_pressed("space"):
@@ -318,65 +328,62 @@ func move(delta, targ):
 		wallJumping = false
 		wallJumpingTick = 0
 		if not userInput:
-			if not damageTaken:
-				velocity.x *= 0.5
-			elif damageTick < 30:
-				velocity.x *= 0.9
+			velocity.x *= 0.5
+			
 		delayTick = 1
 		prevWallTick = 0
 	
 	userInput = false
 	
 	
-	if not damageTaken or damageTick > 30:
-	
-		if Input.is_action_pressed("left"):
-			if is_on_floor():
-				if velocity.x > -125:
-					velocity.x += clamp(-2.5*leftTick, -33, 0)
-					leftTick += 1
-					userInput = true
-			else:
-				if is_on_wall():
-					wallStickTick += 1
-					if wallStickTick > 9:
-						if velocity.x > -110:
-							velocity.x -= 15*airSpeed
-							userInput = true
-				elif chain.extended:
-					if velocity.x > -70:
-						velocity.x -= 7*airSpeed
-						userInput = true
-				else:
+
+	if Input.is_action_pressed("left"):
+		if is_on_floor():
+			if velocity.x > -125:
+				velocity.x += clamp(-2.5*leftTick, -33, 0)
+				leftTick += 1
+				userInput = true
+		else:
+			if is_on_wall():
+				wallStickTick += 1
+				if wallStickTick > 9:
 					if velocity.x > -110:
 						velocity.x -= 15*airSpeed
 						userInput = true
-		else:
-			leftTick = 0
-	
-		if Input.is_action_pressed("right"):
-			if is_on_floor():
-				if velocity.x < 125:
-					velocity.x += clamp(2.5*rightTick, 0, 33)
-					rightTick += 1
+			elif chain.extended:
+				if velocity.x > -70:
+					velocity.x -= 7*airSpeed
 					userInput = true
 			else:
-				if is_on_wall():
-					wallStickTick += 1
-					if wallStickTick > 9:
-						if velocity.x < 110:
-							velocity.x += 15*airSpeed
-							userInput = true
-				elif chain.extended:
-					if velocity.x < 70:
-						velocity.x += 7*airSpeed
-						userInput = true
-				else:
+				if velocity.x > -110:
+					velocity.x -= 15*airSpeed
+					userInput = true
+	else:
+		leftTick = 0
+
+	if Input.is_action_pressed("right"):
+		if is_on_floor():
+			if velocity.x < 125:
+				velocity.x += clamp(2.5*rightTick, 0, 33)
+				rightTick += 1
+				userInput = true
+		else:
+			if is_on_wall():
+				wallStickTick += 1
+				if wallStickTick > 9:
 					if velocity.x < 110:
 						velocity.x += 15*airSpeed
 						userInput = true
-		else:
-			rightTick = 0
+			elif chain.extended:
+				if velocity.x < 70:
+					velocity.x += 7*airSpeed
+					userInput = true
+			else:
+				if velocity.x < 110:
+					velocity.x += 15*airSpeed
+					userInput = true
+	else:
+		rightTick = 0
 	
 	if not Input.is_action_pressed("right") and not Input.is_action_pressed("left"):
 		wallStickTick = 0
@@ -449,7 +456,9 @@ func move(delta, targ):
 #		if velocity.y > 0:
 #			velocity.y *= 0.85
 
-		if is_instance_valid(enemyCollision) and enemyCollision == targ:
+		if is_instance_valid(enemyCollision) and enemyCollision == currentTarget:
+			currentTarget = null
+			targetLocked = false
 			chain.retract(global_position)
 			$SFX.shootStop()
 			enemyDead = true
@@ -762,7 +771,9 @@ func _physics_process(delta):
 	
 		prevRoomNum = num
 		
-		var targ = find_target()
+		var targ = null
+		if not targetLocked:
+			targ = find_target()
 		if is_instance_valid(targ):
 			targ.selected = true
 		move(delta, targ)
@@ -773,11 +784,14 @@ func _physics_process(delta):
 		if (Input.get_joy_axis(0, 7) > 0.1 and triggerRelease) or Input.is_action_just_pressed("shift"):
 			if chain.retracted and is_instance_valid(targ):
 				chain.extend(targ)
+				targetLocked = true
 				$SFX.shoot()
-				prevLock = targ
+				currentTarget = targ
 				prevWallTick = 0
 				triggerRelease = false
 		if (Input.get_joy_axis(0, 7) < 0.1 or global_position.y < chain.targPos.y - 5) and chain.extended:
+			currentTarget = null
+			targetLocked = false
 			chain.retract(global_position)
 		chain.chainUpdate(delta)
 #		if hp == 1:
@@ -801,13 +815,16 @@ func _physics_process(delta):
 		if damageTaken and hp != 0:
 			damageTick += 1
 			set_modulate(Color(1, 1, 1, (fmod(damageTick/2, 2)/1.5) + 0.33))
+			if damageTick == 60:
+				$Area2D.position.x = 1000
 			if damageTick > 60:
 				set_modulate(Color(1, 1, 1, 1))
 				damageTaken = false
 				damageTick = 0
+				$Area2D.position.x = 0
 		animation(targ)
 		if is_instance_valid(enemyCollision):
-			if enemyCollision == prevLock or bubbleTick > 0:
+			if enemyCollision == currentTarget or bubbleTick > 0:
 				$SFX.kill()
 				enemyCollision.alive = false
 				enemyCollision.deathSpeed = velocity
@@ -817,7 +834,9 @@ func _physics_process(delta):
 				if cam.get_node("KeyContain/KeyBar").rect_size.x >= 30:
 					cam.get_node("UI/Key").keyGet = true
 					print("sent")
-				if is_instance_valid(targ) and enemyCollision == targ:
+				if is_instance_valid(currentTarget) and enemyCollision == currentTarget:
+					targetLocked = false
+					currentTarget = null
 					chain.retract(global_position)
 					$SFX.shootStop()
 					enemyDead = true
@@ -831,16 +850,22 @@ func _physics_process(delta):
 					get_parent().add_child(particle)
 				
 				var angle = atan2(global_position.y - enemyCollision.global_position.y, global_position.x - enemyCollision.global_position.x)
-				if abs(velocity.x) < 300:
-					velocity.x = cos(angle)*300
-				if abs(velocity.y) < 300:
-					velocity.x = sin(angle)*300
+				
+				velocity.x = cos(angle)*200
+				if is_on_floor():
+					velocity.y = -125
+					jumpRelease = true
+					preGroundTick = 6
+					preWallTick = 6
+					floorDamage = true
+				else:
+					velocity.y = clamp(sin(angle)*150, -150, 0)
 #				hp -= 1
 				$SFX.damage()
 				damageTaken = true
 		enemyCollision = null
 		enemyDead = false
-		
+#		print(velocity.y)
 #		if endSeq:
 #			endTick += 1
 #			if endTick > 60:

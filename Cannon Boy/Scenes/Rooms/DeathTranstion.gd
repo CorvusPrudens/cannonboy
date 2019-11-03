@@ -21,7 +21,7 @@ func _on_animation_end():
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
-	set_z_index(100000)
+	set_z_index(1024)
 	frames = [$One, $Two, $Three, $Four]
 	for frame in frames:
 		frame.playing = false
@@ -29,7 +29,7 @@ func _ready():
 	pass # Replace with function body.
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta):
+func _physics_process(delta):
 	if fading:
 		var vol = AudioServer.get_bus_volume_db(AudioServer.get_bus_index("Music"))
 		if vol > -60:

@@ -10,6 +10,7 @@ var sideRoom: bool = false
 var ss: bool = false
 var dss: bool = false
 var ssTick: float = 0
+var dssTick: float = 0
 var ssOffset: Vector2 = Vector2(0, 0)
 var player
 
@@ -19,7 +20,7 @@ func _on_killSS():
 
 func _on_damageSS():
 	dss = true
-	ssTick = 0
+	dssTick = 0
 
 func node(string):
 	return get_parent().get_node(string)
@@ -37,7 +38,10 @@ func set_pos_smooth():
 		elif player.velocity.y >= 100:
 			if tempOffset > 0:
 				tempOffset -= 1
-		currentPos.y -= (currentPos.y - target.y + tempOffset)/8
+		if currentPos.y < -3700 and target.y - tempOffset < currentPos.y:
+			currentPos.y -= (currentPos.y - target.y + tempOffset)/(8 + abs(currentPos.y + 3700))
+		else:
+			currentPos.y -= (currentPos.y - target.y + tempOffset)/8
 		
 		if currentPos.y > 128:
 			currentPos.y = 128
@@ -64,8 +68,8 @@ func set_pos_smooth():
 		
 		if ssTick < 30:
 			if fmod(ssTick, 2) == 0:
-				ssOffset.x += (randf() - 0.5)*cos((ssTick/30)*(PI/2))*4
-				ssOffset.y += (randf() - 0.5)*cos((ssTick/30)*(PI/2))*4
+				ssOffset.x += (randf() - 0.5)*cos((dssTick/30)*(PI/2))*4
+				ssOffset.y += (randf() - 0.5)*cos((dssTick/30)*(PI/2))*4
 			else:
 				ssOffset.x = 0
 				ssOffset.y = 0
@@ -73,29 +77,30 @@ func set_pos_smooth():
 			ssTick = 0
 			ssOffset = Vector2(0, 0)
 			ss = false
-	elif dss:
-		if ssTick == 0:
+	if dss:
+		if dssTick == 0:
 			ssOffset = Vector2(0, 0)
-		ssTick += 1
+		dssTick += 1
 		
-		if ssTick < 40:
-			if fmod(ssTick, 2) == 0:
-				ssOffset.x += (randf() - 0.5)*cos((ssTick/40)*(PI/2))*6
-				ssOffset.y += (randf() - 0.5)*cos((ssTick/40)*(PI/2))*6
+		if dssTick < 40:
+			if fmod(dssTick, 2) == 0:
+				ssOffset.x += (randf() - 0.5)*cos((dssTick/40)*(PI/2))*6
+				ssOffset.y += (randf() - 0.5)*cos((dssTick/40)*(PI/2))*6
 			else:
 				ssOffset.x = 0
 				ssOffset.y = 0
 		else:
-			ssTick = 0
+			dssTick = 0
 			ssOffset = Vector2(0, 0)
 			dss = false
 	
 	tempPos.x = round(currentPos.x + ssOffset.x)
 	tempPos.y = round(currentPos.y + ssOffset.y)
+	$UI.position = Vector2(ssOffset.x, ssOffset.y)
 	zoom = Vector2(1/tempFac, 1/tempFac)
 	global_position = tempPos
-	if global_position.y - 90 < -3840:
-		global_position.y = -3840 + 90
+	if global_position.y - 100 < -3840:
+		global_position.y = -3840 + 100
 	
 
 func _ready():

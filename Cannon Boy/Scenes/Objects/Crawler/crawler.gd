@@ -53,7 +53,7 @@ func _ready():
 	pass # Replace with function body.
 
 
-func _process(delta):
+func _physics_process(delta):
 	if alive:
 		if selected:
 			selectedTick += 0.25
