@@ -19,10 +19,6 @@ config/name="Climber"
 run/main_scene="res://Scenes/Rooms/Main.tscn"
 config/icon="res://icon.png"
 
-[debug]
-
-settings/fps/force_fps=60
-
 [display]
 
 window/size/width=1280

@@ -86,6 +86,7 @@ signal onWall
 signal damageSS
 
 var animationTick: float = 0
+var deltaOffset = 60
 
 
 func _on_roomchange():
@@ -228,7 +229,6 @@ func animation(target):
 					justWall = false
 					wallTick = 0
 	else:
-		
 		if justWall == false:
 			wallTick += 1
 			$Legs.frame = 31
@@ -722,7 +722,8 @@ func traceStick():
 	else:
 		return null
 
-func _process(delta):
+func _physics_process(delta):
+	delta *= deltaOffset
 	if alive:
 		if hp <= 0:
 			alive = false
@@ -865,6 +866,4 @@ func _process(delta):
 		if deathTick > 12:
 			$DeathTranstion.visible = true
 			$DeathTranstion._on_play()
-
-
 
