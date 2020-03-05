@@ -12,8 +12,13 @@ var targParent: YSort
 var targParents = []
 var prevLock = null
 var bubbleTick = 0
+var bubbleFallTick = 0
 var footTick = 0
 var floorDamage: bool = false
+var upwell: bool = false
+var upwellTick = 0
+var musicPlaying: bool = false
+
 
 var targetLocked: bool = false
 var currentTarget = null
@@ -22,6 +27,7 @@ var deathTick: float = 0
 
 var partScene = load("res://Scenes/Objects/Particle.tscn")
 var partTick: float = 0
+var cloudScene = load("res://Scenes/Objects/Player/PlayerDamageCloud.tscn")
 
 var velocity: Vector2 = Vector2(0, 0)
 var userInput: bool = false
@@ -63,6 +69,7 @@ var prevRoomNum: float = 0
 var tileParent
 
 var enemyCollision = null
+var enemyDamageCollision = null
 
 var endSeq: bool = false
 var endTick: float = 0
@@ -101,8 +108,12 @@ func _on_body_entered(body):
 		enemyCollision = body
 	pass 
 
+func _on_EnemyDetector_body_entered(body):
+	if body.get_parent().get_name() == "BlobSpawner":
+		enemyDamageCollision = body
+	pass # Replace with function body.
+
 func _on_end():
-	permOffset = velocity.y
 	endSeq = true
 
 func _on_death():
@@ -110,6 +121,7 @@ func _on_death():
 	$DeathTranstion._on_play()
 
 func _ready():
+	randomize()
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Music"), 0)
 	self.connect("damageSS", get_parent().get_node("Camera2D"), "_on_damageSS")
 	get_parent().get_node("RoomSpawner").connect("roomChange", self, "_on_roomchange")
@@ -138,7 +150,7 @@ func _ready():
 
 
 func animation(target):
-	animationTick += 1
+	animationTick += 0.8
 	$Legs.position.x = 0
 	$Cannon.position.x = 0
 	if is_on_floor():
@@ -163,7 +175,7 @@ func animation(target):
 				$Legs.flip_h = false
 				var f = 10 + fmod(animationTick/2, 10)
 				$Legs.frame = f
-				if f == 11 or f == 16:
+				if floor(f) == 11 or floor(f) == 16:
 					$Cannon.position.y = -1
 					$SFX.footstep()
 					$SFX.chain()
@@ -173,7 +185,7 @@ func animation(target):
 				$Legs.flip_h = true
 				var f = 10 + fmod(animationTick/2, 10)
 				$Legs.frame = f
-				if f == 11 or f == 16:
+				if floor(f) == 11 or floor(f) == 16:
 					$Cannon.position.y = -1
 					$SFX.footstep()
 					$SFX.chain()
@@ -186,6 +198,13 @@ func animation(target):
 				else:
 					$Cannon.position.y = 0
 			if justLanded:
+				if landTick == 0:
+					$SFX.land()
+					if not musicPlaying:
+						musicPlaying = true
+						get_parent().get_node("Music").play(0)
+						get_parent().get_node("Music2").play(0)
+						get_parent().get_node("Music3").play(0)
 				$Legs.frame = 4
 				landTick += 1
 				if landTick > 5:
@@ -209,6 +228,8 @@ func animation(target):
 			$Legs.position.x = 2
 			$Cannon.position.x = 2
 			if justWall:
+				if wallTick == 0:
+					$SFX.land()
 				wallTick += 1
 				$Legs.frame = 31
 				$Legs.position.x = 1
@@ -228,6 +249,8 @@ func animation(target):
 			$Legs.position.x = -2
 			$Cannon.position.x = -2
 			if justWall:
+				if wallTick == 0:
+					$SFX.land()
 				wallTick += 1
 				$Legs.frame = 31
 				$Legs.position.x = -1
@@ -270,15 +293,22 @@ func animation(target):
 		landPart = true
 	
 	if chain.extended:
+		if bubbleFallTick > 0:
+			bubbleTick = 4 - bubbleFallTick
+			bubbleFallTick = 0
 		if bubbleTick < 4:
 			$Bubble.frame = 0 + bubbleTick
 			bubbleTick += 0.20
-	else:
+	elif velocity.y <= 5 or is_on_wall():
+		if bubbleFallTick <= 4:
+			$Bubble.frame = bubbleFallTick + 2
+			bubbleFallTick += 0.5
 		if bubbleTick > 0:
-			$Bubble.frame = 0 + bubbleTick
-			bubbleTick -= 0.15
-		if bubbleTick <= 0:
-			$Bubble.frame = 6
+			bubbleTick -= 0.2
+	elif velocity.y > 5:
+		$Bubble.frame = clamp(velocity.y/40, 0, 2)
+		bubbleFallTick = 0
+	
 	
 	var stickAngle = traceStick()
 	if stickAngle != null:
@@ -393,8 +423,7 @@ func move(delta, targ):
 			jumpRelease = false
 			velocity.y -= 150 + velocity.y
 			jumping = true
-			$SFX.footstep()
-			$SFX.chain()
+			$SFX.jump()
 			preGroundTick = 6
 			preWallTick = 6
 		for i in range(4):
@@ -457,6 +486,11 @@ func move(delta, targ):
 #			velocity.y *= 0.85
 
 		if is_instance_valid(enemyCollision) and enemyCollision == currentTarget:
+			if not musicPlaying:
+				musicPlaying = true
+				get_parent().get_node("Music").play(0)
+				get_parent().get_node("Music2").play(0)
+				get_parent().get_node("Music3").play(0)
 			currentTarget = null
 			targetLocked = false
 			chain.retract(global_position)
@@ -488,8 +522,7 @@ func move(delta, targ):
 	
 				if Input.is_action_just_pressed("space") or (Input.is_action_pressed("space") and preGroundTick > 0 and jumpRelease):
 					
-					$SFX.footstep()
-					$SFX.chain()
+					$SFX.jump()
 					jumpRelease = false
 					preGroundTick = 6
 					wallJumping = true
@@ -532,8 +565,7 @@ func move(delta, targ):
 	
 				if Input.is_action_just_pressed("space") or (Input.is_action_pressed("space") and preGroundTick > 0 and jumpRelease):
 					
-					$SFX.footstep()
-					$SFX.chain()
+					$SFX.jump()
 					jumpRelease = false
 					preGroundTick = 6
 					wallJumping = true
@@ -565,6 +597,15 @@ func move(delta, targ):
 						get_parent().add_child(pp)
 				delayTick = 1
 		delayTick -= 1
+	
+	if velocity.y < -10:
+		var vol = AudioServer.get_bus_volume_db(AudioServer.get_bus_index("L3"))
+		if vol < -3:
+			AudioServer.set_bus_volume_db(AudioServer.get_bus_index("L3"), vol + 0.1)
+	else:
+		var vol = AudioServer.get_bus_volume_db(AudioServer.get_bus_index("L3"))
+		if vol > -44:
+			AudioServer.set_bus_volume_db(AudioServer.get_bus_index("L3"), vol - 0.05)
 
 func find_target():
 	var targArr = []
@@ -577,9 +618,14 @@ func find_target():
 	var closestIndex: int = -1
 	
 	if abs(global_position.x) < 96:
-		var vol = AudioServer.get_bus_volume_db(AudioServer.get_bus_index("Music"))
-		if vol < 0:
-			AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Music"), vol + 0.1)
+		var vol = AudioServer.get_bus_volume_db(AudioServer.get_bus_index("L2"))
+		if vol < -3:
+			AudioServer.set_bus_volume_db(AudioServer.get_bus_index("L2"), vol + 0.4)
+		
+#		vol = AudioServer.get_bus_volume_db(AudioServer.get_bus_index("L3"))
+#		if vol < -3:
+#			AudioServer.set_bus_volume_db(AudioServer.get_bus_index("L3"), vol + 0.4)
+		
 		#sorting time baby
 		for targ in targArr:
 			var tempDistY = targ.global_position.y - global_position.y
@@ -718,9 +764,12 @@ func find_target():
 			targLock = false
 			return null
 	else:
-		var vol = AudioServer.get_bus_volume_db(AudioServer.get_bus_index("Music"))
-		if vol > - 8:
-			AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Music"), vol - 0.1)
+		var vol = AudioServer.get_bus_volume_db(AudioServer.get_bus_index("L2"))
+		if vol > - 44:
+			AudioServer.set_bus_volume_db(AudioServer.get_bus_index("L2"), vol - 0.4)
+		vol = AudioServer.get_bus_volume_db(AudioServer.get_bus_index("L3"))
+		if vol > - 44:
+			AudioServer.set_bus_volume_db(AudioServer.get_bus_index("L3"), vol - 0.4)
 		return null
 
 func traceStick():
@@ -732,146 +781,189 @@ func traceStick():
 		return null
 
 func _physics_process(delta):
-	delta *= deltaOffset
 	if alive:
 		if hp <= 0:
 			alive = false
-		#declaring which node holds enemy data
-		var ref: float = cam.global_position.y - 282
-		var num = round(ref/-384)
-		
-		if updateRoom or prevRoomNum != num:
-			#adding new ones
-			var tileNum = num - 1
-			if tileNum <= 0:
-				tileNum = 0
-			tileParent = get_parent().get_node("RoomSpawner").get_node("room" + String(tileNum)).get_node("TileMap")
+		if not upwell:
+			#declaring which node holds enemy data
+			var ref: float = cam.global_position.y - 282
+			var num = round(ref/-384)
 			
-			for child in get_parent().get_node("RoomSpawner").get_children():
-				var n = child.get_name()
-	#			print(n, "room" + String(num))
-				if n == "room" + String(num) or n == "room" + String(num - 1) or n == "room" + String(num + 1):
-					targParents.append(child.get_node("BlobSpawner"))
+			if updateRoom or prevRoomNum != num:
+				#adding new ones
+				var tileNum = num - 1
+				if tileNum <= 0:
+					tileNum = 0
+				tileParent = get_parent().get_node("RoomSpawner").get_node("room" + String(tileNum)).get_node("TileMap")
+				
+				for child in get_parent().get_node("RoomSpawner").get_children():
+					var n = child.get_name()
+		#			print(n, "room" + String(num))
+					if n == "room" + String(num) or n == "room" + String(num - 1) or n == "room" + String(num + 1):
+						targParents.append(child.get_node("BlobSpawner"))
+						
 					
+				#removing old ones
+				for i in range(targParents.size() - 1, -1, -1):
+					var n = targParents[i].get_parent().get_name()
+					if n != "room" + String(num) and n != "room" + String(num + 1) and n != "room" + String(num - 1):
+						targParents.remove(i)
+				updateRoom = false
 				
-			#removing old ones
-			for i in range(targParents.size() - 1, -1, -1):
-				var n = targParents[i].get_parent().get_name()
-				if n != "room" + String(num) and n != "room" + String(num + 1) and n != "room" + String(num - 1):
-					targParents.remove(i)
-			updateRoom = false
+				
+				#removing duplicates cause im so lazy lol
+				for i in range(targParents.size() - 1, -1, -1):
+					for j in range(targParents.size()):
+						if i != j and targParents[i] == targParents[j]:
+							targParents.remove(j)
+							break
+		
+			prevRoomNum = num
 			
-			
-			#removing duplicates cause im so lazy lol
-			for i in range(targParents.size() - 1, -1, -1):
-				for j in range(targParents.size()):
-					if i != j and targParents[i] == targParents[j]:
-						targParents.remove(j)
-						break
-	
-		prevRoomNum = num
-		
-		var targ = null
-		if not targetLocked:
-			targ = find_target()
-		if is_instance_valid(targ):
-			targ.selected = true
-		move(delta, targ)
-		if Input.get_joy_axis(0, 7) < 0.1:
-			triggerRelease = true
-			prevLock = null
-		
-		if (Input.get_joy_axis(0, 7) > 0.1 and triggerRelease) or Input.is_action_just_pressed("shift"):
-			if chain.retracted and is_instance_valid(targ):
-				chain.extend(targ)
-				targetLocked = true
-				$SFX.shoot()
-				currentTarget = targ
-				prevWallTick = 0
-				triggerRelease = false
-		if (Input.get_joy_axis(0, 7) < 0.1 or global_position.y < chain.targPos.y - 5) and chain.extended:
-			currentTarget = null
-			targetLocked = false
-			chain.retract(global_position)
-		chain.chainUpdate(delta)
-#		if hp == 1:
-#			if randf() > 0.98:
-#				red = true
-#				prevPert = Vector2((randf() - 0.5)*4, (randf() - 0.5)*4)
-#
-#			if red:
-#				if redTick == 0:
-#					$Legs.position = prevPert
-#					$Cannon.position = prevPert
-#				set_modulate(Color(1, 0.5, 0.5))
-#				redTick += 1
-#				if redTick > 3:
-#					$Legs.position = Vector2(0, 0)
-#					$Cannon.position = Vector2(0, 0)
-#					red = false
-#					redTick = 0
-#					set_modulate(Color(1, 1, 1))
-		
-		if damageTaken and hp != 0:
-			damageTick += 1
-			set_modulate(Color(1, 1, 1, (fmod(damageTick/2, 2)/1.5) + 0.33))
-			if damageTick == 60:
-				$Area2D.position.x = 1000
-			if damageTick > 60:
-				set_modulate(Color(1, 1, 1, 1))
-				damageTaken = false
-				damageTick = 0
+			var targ = null
+			if not targetLocked:
+				targ = find_target()
+			if is_instance_valid(targ):
+				targ.selected = true
+			if bubbleTick > 0:
 				$Area2D.position.x = 0
-		animation(targ)
-		if is_instance_valid(enemyCollision):
-			if enemyCollision == currentTarget or bubbleTick > 0:
-				$SFX.kill()
-				enemyCollision.alive = false
-				enemyCollision.deathSpeed = velocity
-				if cam.get_node("KeyContain/KeyBar").rect_size.x < 27:
-					cam.get_node("KeyContain/KeyBar").rect_size.x += 5
-				
-				if cam.get_node("KeyContain/KeyBar").rect_size.x >= 30:
-					cam.get_node("UI/Key").keyGet = true
-					print("sent")
-				if is_instance_valid(currentTarget) and enemyCollision == currentTarget:
-					targetLocked = false
-					currentTarget = null
-					chain.retract(global_position)
-					$SFX.shootStop()
-					enemyDead = true
-			elif not chain.extended and not damageTaken and bubbleTick <= 0 and enemyCollision.alive:
-				emit_signal("damageSS")
-				
-				for i in range(7):
-					var particle = partScene.instance()
-					particle.velocity = Vector2(rand_range(-1, 1), rand_range(-1, 1))
-					particle.global_position = Vector2(global_position.x, global_position.y)
-					get_parent().add_child(particle)
-				
-				var angle = atan2(global_position.y - enemyCollision.global_position.y, global_position.x - enemyCollision.global_position.x)
-				
-				velocity.x = cos(angle)*200
-				if is_on_floor():
-					velocity.y = -125
-					jumpRelease = true
+				$EnemyDetector.position.x = 1000
+			else:
+				$Area2D.position.x = 1000
+				$EnemyDetector.position.x = 0
+			move(delta, targ)
+			if Input.get_joy_axis(0, 7) < 0.1:
+				triggerRelease = true
+				prevLock = null
+			
+			if (Input.get_joy_axis(0, 7) > 0.1 and triggerRelease) or Input.is_action_just_pressed("shift"):
+				if chain.retracted and is_instance_valid(targ):
+					chain.extend(targ)
+					targetLocked = true
+					$SFX.shoot()
+					currentTarget = targ
+					prevWallTick = 0
+					triggerRelease = false
+			if (Input.get_joy_axis(0, 7) < 0.1 or global_position.y < chain.targPos.y - 5) and chain.extended:
+				currentTarget = null
+				targetLocked = false
+				chain.retract(global_position)
+			chain.chainUpdate(delta)
+	#		if hp == 1:
+	#			if randf() > 0.98:
+	#				red = true
+	#				prevPert = Vector2((randf() - 0.5)*4, (randf() - 0.5)*4)
+	#
+	#			if red:
+	#				if redTick == 0:
+	#					$Legs.position = prevPert
+	#					$Cannon.position = prevPert
+	#				set_modulate(Color(1, 0.5, 0.5))
+	#				redTick += 1
+	#				if redTick > 3:
+	#					$Legs.position = Vector2(0, 0)
+	#					$Cannon.position = Vector2(0, 0)
+	#					red = false
+	#					redTick = 0
+	#					set_modulate(Color(1, 1, 1))
+			
+			if damageTaken and hp != 0:
+				damageTick += 1
+				set_modulate(Color(1, 1, 1, (fmod(damageTick/2, 2)/1.5) + 0.33))
+				if damageTick == 60:
+					$EnemyDetector.position.x = 1000
+				if damageTick > 60:
+					set_modulate(Color(1, 1, 1, 1))
+					damageTaken = false
+					damageTick = 0
+					$EnemyDetector.position.x = 0
+			animation(targ)
+			if is_instance_valid(enemyCollision):
+				if enemyCollision == currentTarget or bubbleTick > 0:
+					$SFX.kill()
+					enemyCollision.alive = false
+					enemyCollision.deathSpeed = velocity
+					if cam.get_node("KeyContain/KeyBar").rect_size.x < 27:
+						cam.get_node("KeyContain/KeyBar").rect_size.x += 5
+					
+					if cam.get_node("KeyContain/KeyBar").rect_size.x >= 30:
+						cam.get_node("UI/Key").keyGet = true
+					if is_instance_valid(currentTarget) and enemyCollision == currentTarget:
+						targetLocked = false
+						currentTarget = null
+						chain.retract(global_position)
+						$SFX.shootStop()
+						enemyDead = true
+			if is_instance_valid(enemyDamageCollision) and not chain.extended and not damageTaken and enemyDamageCollision.alive:
+				if velocity.y > 0 and global_position.y + 5 < enemyDamageCollision.global_position.y:
+					jumpRelease = false
+					
+					jumping = true
+					$SFX.kill()
+					enemyDamageCollision.alive = false
+					enemyDamageCollision.deathSpeed = velocity
+					velocity.y = -150
+					if cam.get_node("KeyContain/KeyBar").rect_size.x < 27:
+						cam.get_node("KeyContain/KeyBar").rect_size.x += 5
+					
+					if cam.get_node("KeyContain/KeyBar").rect_size.x >= 30:
+						cam.get_node("UI/Key").keyGet = true
 					preGroundTick = 6
 					preWallTick = 6
-					floorDamage = true
-				else:
-					velocity.y = clamp(sin(angle)*150, -150, 0)
-#				hp -= 1
-				$SFX.damage()
-				damageTaken = true
-		enemyCollision = null
-		enemyDead = false
-#		print(velocity.y)
-#		if endSeq:
-#			endTick += 1
-#			if endTick > 60:
-##				get_tree().quit()
-##				var scene = load("res://Scenes/Rooms/Main.tscn")
-#				get_tree().change_scene("res://Scenes/Rooms/Main.tscn")
+					
+				elif bubbleTick <= 0:
+					emit_signal("damageSS")
+					
+					for i in range(2):
+						var particle = partScene.instance()
+						particle.velocity = Vector2(rand_range(-1, 1), rand_range(-1, 1))
+						particle.global_position = Vector2(global_position.x, global_position.y)
+						get_parent().add_child(particle)
+					
+					var angle = atan2(global_position.y - enemyDamageCollision.global_position.y, global_position.x - enemyDamageCollision.global_position.x)
+					
+					velocity.x = cos(angle)*200
+					if is_on_floor():
+						velocity.y = -125
+						jumpRelease = true
+						preGroundTick = 6
+						preWallTick = 6
+						floorDamage = true
+					else:
+						velocity.y = clamp(sin(angle)*150, -150, 0)
+					hp -= 1
+					var cloud = cloudScene.instance()
+					cloud.global_position = global_position
+					get_parent().add_child(cloud)
+					$SFX.damage()
+					damageTaken = true
+			enemyCollision = null
+			enemyDamageCollision = null
+			enemyDead = false
+	#		print(velocity.y)
+	#		if endSeq:
+	#			endTick += 1
+	#			if endTick > 60:
+	##				get_tree().quit()
+	##				var scene = load("res://Scenes/Rooms/Main.tscn")
+	#				get_tree().change_scene("res://Scenes/Rooms/Main.tscn")
+		else:
+			if global_position.y > 0:
+				upwellTick += 1
+				if upwellTick > 60:
+					velocity.y = -170
+					velocity.x = (0 - global_position.x)/8
+					
+				move_and_slide(velocity, Vector2(0, -1))
+				chain.chainUpdate(delta)
+				animation(null)
+			else:
+				velocity.y = -170
+				velocity.x = (0 - global_position.x)/8
+				
+				move_and_slide(velocity, Vector2(0, -1))
+				chain.chainUpdate(delta)
+				animation(null)
 	else:
 		
 		chain.visible = false
@@ -891,4 +983,7 @@ func _physics_process(delta):
 		if deathTick > 12:
 			$DeathTranstion.visible = true
 			$DeathTranstion._on_play()
+
+
+
 

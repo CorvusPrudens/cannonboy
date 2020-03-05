@@ -36,7 +36,9 @@ func _physics_process(delta):
 			AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Music"), vol - 0.8)
 	if end:
 		endTick += 1
-		if endTick > 30:
+		if endTick == 30:
+			get_tree().get_root().get_node("Node2D/LoadScreen").visible = true
+		elif endTick >= 32:
 			get_tree().change_scene("res://Scenes/Rooms/Main.tscn")
 	if Input.is_action_just_pressed("ui_right"):
 		if not fading:

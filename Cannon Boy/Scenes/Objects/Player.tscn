@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=2]
+[gd_scene load_steps=10 format=2]
 
 [ext_resource path="res://Scenes/Objects/KinematicBody2D.gd" type="Script" id=1]
 [ext_resource path="res://Scenes/Objects/Area2D.gd" type="Script" id=2]
@@ -6,23 +6,13 @@
 [ext_resource path="res://Assets/Sprites/Player/cannon_boy.png" type="Texture" id=4]
 [ext_resource path="res://Scenes/Objects/Cannon.gd" type="Script" id=5]
 [ext_resource path="res://Assets/Sprites/Shields/bubblesheild_sheet.png" type="Texture" id=6]
-[ext_resource path="res://Assets/Audio/SFX/Player/footstep/footstep1.wav" type="AudioStream" id=7]
-[ext_resource path="res://Scenes/Objects/AudioStreamPlayer.gd" type="Script" id=8]
-[ext_resource path="res://Assets/Audio/SFX/Player/footstep/footstep2.wav" type="AudioStream" id=9]
-[ext_resource path="res://Assets/Audio/SFX/Player/footstep/footstep3.wav" type="AudioStream" id=10]
-[ext_resource path="res://Scenes/Objects/Chains.gd" type="Script" id=11]
-[ext_resource path="res://Assets/Audio/SFX/Player/chain/chain1.wav" type="AudioStream" id=12]
-[ext_resource path="res://Assets/Audio/SFX/Player/chain/chain2.wav" type="AudioStream" id=13]
-[ext_resource path="res://Assets/Audio/SFX/Player/chain/chain3.wav" type="AudioStream" id=14]
-[ext_resource path="res://Assets/Audio/SFX/Player/chain/chain4.wav" type="AudioStream" id=15]
-[ext_resource path="res://Assets/Audio/SFX/Player/chain/chain5.wav" type="AudioStream" id=16]
-[ext_resource path="res://Scenes/Objects/FootSteps2.gd" type="Script" id=17]
+[ext_resource path="res://Scenes/Objects/FootSteps2.gd" type="Script" id=7]
 
 [sub_resource type="ConvexPolygonShape2D" id=1]
 points = PoolVector2Array( 6, -2, 5, 5, -5, 5, -6, -2, 0, -6 )
 
-[sub_resource type="RectangleShape2D" id=2]
-extents = Vector2( 6, 7 )
+[sub_resource type="CircleShape2D" id=2]
+radius = 12.0
 
 [node name="Player" type="KinematicBody2D"]
 script = ExtResource( 1 )
@@ -32,14 +22,20 @@ position = Vector2( 0, 3 )
 shape = SubResource( 1 )
 
 [node name="Area2D" type="Area2D" parent="."]
-editor/display_folded = true
 collision_layer = 8
 collision_mask = 4
 script = ExtResource( 2 )
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
-position = Vector2( 0, 2 )
 shape = SubResource( 2 )
+
+[node name="EnemyDetector" type="Area2D" parent="."]
+collision_layer = 8
+collision_mask = 4
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="EnemyDetector"]
+position = Vector2( 0, 2 )
+shape = SubResource( 1 )
 
 [node name="DeathTranstion" parent="." instance=ExtResource( 3 )]
 z_index = 1005
@@ -57,7 +53,7 @@ z_index = 1000
 texture = ExtResource( 4 )
 vframes = 4
 hframes = 10
-frame = 20
+frame = 24
 script = ExtResource( 5 )
 
 [node name="Bubble" type="Sprite" parent="."]
@@ -65,18 +61,10 @@ z_index = 1001
 texture = ExtResource( 6 )
 vframes = 3
 hframes = 7
-frame = 3
-
-[node name="FootSteps" type="AudioStreamPlayer" parent="."]
-stream = ExtResource( 7 )
-script = ExtResource( 8 )
-streams = [ ExtResource( 7 ), ExtResource( 9 ), ExtResource( 10 ) ]
-
-[node name="Chains" type="AudioStreamPlayer" parent="FootSteps"]
-script = ExtResource( 11 )
-streams = [ ExtResource( 12 ), ExtResource( 13 ), ExtResource( 14 ), ExtResource( 15 ), ExtResource( 16 ) ]
+frame = 6
 
 [node name="SFX" type="Node2D" parent="."]
-script = ExtResource( 17 )
+script = ExtResource( 7 )
 
 [connection signal="body_entered" from="Area2D" to="." method="_on_body_entered"]
+[connection signal="body_entered" from="EnemyDetector" to="." method="_on_EnemyDetector_body_entered"]

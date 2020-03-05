@@ -3,10 +3,13 @@ extends Node2D
 var sprite
 var overlay
 var play = false
+var check = false
+var checkTick = 0
 var tick = 0
 var player
 var toggle = true
 var count = 0
+var open = false
 # Declare member variables here. Examples:
 # var a = 2
 # var b = "text"
@@ -23,7 +26,19 @@ func _ready():
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _physics_process(delta):
+	if check:
+		#left stick horizontal direction
+		var dir = Input.get_joy_axis(0, 0)
+		if abs(dir) > 0.2 and sign(global_position.x) == sign(dir):
+			checkTick += 1
+			if checkTick > 10:
+				play = true
+		else:
+			checkTick = 0
 	if play:
+		if tick == 0:
+			$SFX.playing = true
+			$SFX2.playing = true
 		if tick < 6:
 			sprite.frame = tick
 			tick += 0.4
@@ -48,8 +63,12 @@ func _on_Area2D_body_entered(body):
 
 
 func _on_Area2D2_body_entered(body):
-	count = get_tree().get_root().get_node("Node2D/FollowKeyContainer").get_child_count()
-	if body == player and count > 0:
-		play = true
-		$SFX.playing = true
-	pass 
+	if not open:
+		count = get_tree().get_root().get_node("Node2D/FollowKeyContainer").get_child_count()
+		if body == player and count > 0:
+			check = true
+
+
+func _on_Area2D2_body_exited(body):
+	check = false
+	checkTick = 0

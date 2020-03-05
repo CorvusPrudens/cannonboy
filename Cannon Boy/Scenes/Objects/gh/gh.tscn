@@ -1,7 +1,8 @@
-[gd_scene load_steps=4 format=2]
+[gd_scene load_steps=5 format=2]
 
 [ext_resource path="res://Scenes/Objects/gh/gh.gd" type="Script" id=1]
 [ext_resource path="res://Assets/Sprites/oGhost/Ghost Sprites.png" type="Texture" id=2]
+[ext_resource path="res://Scenes/Objects/gh/Sprite.gd" type="Script" id=3]
 
 [sub_resource type="CapsuleShape2D" id=1]
 radius = 4.0
@@ -20,4 +21,5 @@ texture = ExtResource( 2 )
 vframes = 5
 hframes = 3
 region_rect = Rect2( 28.125, 5.375, 13, 4.75 )
+script = ExtResource( 3 )
 

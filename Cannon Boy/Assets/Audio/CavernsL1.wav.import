@@ -1,0 +1,21 @@
+[remap]
+
+importer="wav"
+type="AudioStreamSample"
+path="res://.import/CavernsL1.wav-b73f55920f007f287851d28425e90757.sample"
+
+[deps]
+
+source_file="res://Assets/Audio/CavernsL1.wav"
+dest_files=[ "res://.import/CavernsL1.wav-b73f55920f007f287851d28425e90757.sample" ]
+
+[params]
+
+force/8_bit=false
+force/mono=false
+force/max_rate=false
+force/max_rate_hz=44100
+edit/trim=false
+edit/normalize=false
+edit/loop=true
+compress/mode=0

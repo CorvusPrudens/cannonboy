@@ -38,3 +38,4 @@ func _process(delta):
 	if not fading:
 		frames[0].playing = true
 		fading = true
+	pass

@@ -15,7 +15,7 @@ class Vertex:
 	
 	var start: bool = true
 	
-	func _init(pos, _g=0.4, _ground=180, _groundBounce=1, _drag=0.98):
+	func _init(pos, _g=0.4, _ground=250, _groundBounce=1, _drag=0.98):
 		sprite = sp.instance()
 		sprite.frame = round(rand_range(0, 3))
 		sprite.set_z_index(10)
@@ -221,10 +221,11 @@ func _ready():
 	player = get_parent().get_node("Player")
 	sprite = sp.instance()
 	sprite.set_z_index(1)
+	sprite.global_position = global_position
 	add_child(sprite)
 	
 	for i in range(3):
-		addVertex(Vector2(-30 + i*12, 80))
+		addVertex(Vector2(-30 + i*12, 250))
 	for i in range(2):
 		addLine([i, i + 1, 10])
 	pass

@@ -47,17 +47,21 @@ z_index = 1000
 [node name="UI Heart" parent="UI" instance=ExtResource( 6 )]
 position = Vector2( -144, -64 )
 z_index = 1000
+z_as_relative = false
 
 [node name="UI Heart2" parent="UI" instance=ExtResource( 6 )]
 position = Vector2( -128, -64 )
 z_index = 1000
+z_as_relative = false
 
 [node name="UI Heart3" parent="UI" instance=ExtResource( 6 )]
 position = Vector2( -112, -64 )
 z_index = 1000
+z_as_relative = false
 
 [node name="UI Grid" type="Sprite" parent="UI"]
 position = Vector2( -128, -48 )
 z_index = 1001
+z_as_relative = false
 texture = ExtResource( 7 )
 

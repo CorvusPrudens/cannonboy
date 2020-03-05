@@ -13,12 +13,30 @@ func spawnGhosts(num: int, pos: Vector2):
 			index += 1
 		var tempBlob = enemyTypes[index].instance()
 		add_child(tempBlob)
-		var randx = rand_range(-64, 64)
-		var randy = rand_range(-192, 192)
-		
-		while tiles.get_cellv(tiles.world_to_map(Vector2(randx, randy))) != -1:
+		var randx
+		var randy
+		if global_position.y <= -3456:
+			randx = rand_range(-80, 80)
+			randy = rand_range(50, 192)
+			
+			while tiles.get_cellv(tiles.world_to_map(Vector2(randx, randy))) != -1:
+				randx = rand_range(-80, 80)
+				randy = rand_range(50, 192)
+		elif global_position.y == 0:
+			randx = rand_range(-80, 80)
+			randy = rand_range(-192, 0)
+			
+			while tiles.get_cellv(tiles.world_to_map(Vector2(randx, randy))) != -1:
+				randx = rand_range(-80, 80)
+				randy = rand_range(-192, 0)
+		else:
 			randx = rand_range(-80, 80)
 			randy = rand_range(-192, 192)
+			
+			while tiles.get_cellv(tiles.world_to_map(Vector2(randx, randy))) != -1:
+				randx = rand_range(-80, 80)
+				randy = rand_range(-192, 192)
+		
 		
 		tempBlob.position = Vector2(randx, randy)
 		enemyArr.append(tempBlob)

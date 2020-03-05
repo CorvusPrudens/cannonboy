@@ -57,3 +57,4 @@ func _input(event):
 			visible = true
 			frames[0].playing = true
 			fading = true
+			$AudioStreamPlayer.play(0)

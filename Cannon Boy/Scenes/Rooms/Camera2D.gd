@@ -38,8 +38,8 @@ func set_pos_smooth():
 		elif player.velocity.y >= 100:
 			if tempOffset > 0:
 				tempOffset -= 1
-		if currentPos.y < -3700 and target.y - tempOffset < currentPos.y:
-			currentPos.y -= (currentPos.y - target.y + tempOffset)/(8 + abs(currentPos.y + 3700))
+		if currentPos.y < -3316 and target.y - tempOffset < currentPos.y:
+			currentPos.y -= (currentPos.y - target.y + tempOffset)/(8 + abs(currentPos.y + 3316))
 		else:
 			currentPos.y -= (currentPos.y - target.y + tempOffset)/8
 		
@@ -99,8 +99,8 @@ func set_pos_smooth():
 	$UI.position = Vector2(ssOffset.x, ssOffset.y)
 	zoom = Vector2(1/tempFac, 1/tempFac)
 	global_position = tempPos
-	if global_position.y - 100 < -3840:
-		global_position.y = -3840 + 100
+	if global_position.y - 100 < -3456:
+		global_position.y = -3456 + 100
 	
 
 func _ready():

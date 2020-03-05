@@ -36,11 +36,11 @@ func _on_player_touch(normal, position):
 
 
 func _ready():
-	if global_position.x > 40:
+	if global_position.x > 25:
 		surfaceNormal = Vector2(-1, 0)
 	elif global_position.x < -40:
 		surfaceNormal = Vector2(1, 0)
-	elif global_position.x > 0 and global_position.x < 40:
+	elif global_position.x > 0 and global_position.x < 25:
 		surfaceNormal = Vector2(1, 0)
 	elif global_position.x < 0 and global_position.x < -40:
 		surfaceNormal = Vector2(-1, 0)
